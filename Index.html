@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مُفرّغ المخطوطات والخطوط العربية الذكي</title>
+    
+    <!-- Fonts: IBM Plex Sans Arabic & Amiri for authentic manuscript style -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                            gold: '#d97706',
+                        },
+                        darkbg: '#0f172a',
+                        darkcard: '#1e293b',
+                        darkborder: '#334155'
+                    },
+                    fontFamily: {
+                        sans: ['IBM Plex Sans Arabic', 'sans-serif'],
+                        manuscript: ['Amiri', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- PDF.js Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
+    <style>
+        /* Custom scrollbar for dark mode */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        .drag-active {
+            border-color: #22c55e !important;
+            background-color: rgba(34, 197, 94, 0.08) !important;
+        }
+    </style>
+</head>
+<body class="bg-darkbg text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-brand-600 selection:text-white">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-darkcard border-b border-darkborder sticky top-0 z-40 shadow-lg backdrop-blur-md bg-opacity-90">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <button id="sidebar-toggle-btn" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors" title="الأرشيف والسجل">
+                    <i class="fa-solid fa-bars-staggered text-lg"></i>
+                </button>
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-amber-500 flex items-center justify-center text-white shadow-md">
+                        <i class="fa-solid fa-feather-pointed text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight tracking-wide text-white">مُفرّغ المخطوطات والخط العربي</h1>
+                        <p class="text-xs text-slate-400">استخراج خط الرقعة والخطوط اليدوية بالذكاء الاصطناعي</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Header Controls -->
+            <div class="flex items-center gap-3">
+                <div id="autosave-status" class="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700/60">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span id="autosave-text">جاهز للحفظ</span>
+                </div>
+                
+                <button id="open-settings-btn" class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 text-sm transition-all shadow-sm">
+                    <i class="fa-solid fa-key text-amber-400"></i>
+                    <span class="hidden md:inline">مفتاح API</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden relative">
+        
+        <!-- Sidebar - History & Archives -->
+        <aside id="sidebar" class="fixed inset-y-0 right-0 z-30 w-80 bg-slate-900 border-l border-darkborder transform translate-x-full transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 flex flex-col shadow-2xl lg:shadow-none">
+            <div class="p-4 border-b border-darkborder flex items-center justify-between">
+                <h2 class="font-semibold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-brand-500"></i>
+                    سجل العمليات والأرشيف
+                </h2>
+                <button id="close-sidebar-btn" class="lg:hidden p-1.5 text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="p-3">
+                <input type="text" id="history-search" placeholder="بحث في السجل..." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500">
+            </div>
+
+            <div id="history-list" class="flex-1 overflow-y-auto p-3 space-y-2">
+                <!-- History Items will be rendered dynamically -->
+                <div class="text-center py-8 text-slate-500 text-xs">
+                    <i class="fa-solid fa-box-open text-2xl mb-2 block opacity-40"></i>
+                    لا يوجد عمليات محفوظة بعد
+                </div>
+            </div>
+
+            <div class="p-3 border-t border-darkborder bg-slate-900/50 flex justify-between">
+                <button id="clear-history-btn" class="text-xs text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-1">
+                    <i class="fa-solid fa-trash-can"></i> مسح السجل بالكامل
+                </button>
+            </div>
+        </aside>
+
+        <!-- Sidebar Overlay for Mobile -->
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-20 hidden lg:hidden backdrop-blur-sm"></div>
+
+        <!-- Main Workspace -->
+        <main class="flex-1 overflow-y-auto p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-6">
+
+            <!-- Section 1: File Loader & Upload Dropzone -->
+            <section class="bg-darkcard border border-darkborder rounded-2xl p-4 sm:p-6 shadow-xl relative overflow-hidden">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-file-arrow-up text-brand-500"></i>
+                            إضافة الصور والمستندات (معالجة تراكمية)
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">يمكنك رفع الصور (JPG, PNG, WEBP, BMP) أو ملفات PDF متعددة الصفحات بدون مسح القائمة الحالية</p>
+                    </div>
+
+                    <div class="flex items-center gap-2 self-end md:self-auto">
+                        <button id="clear-all-files-btn" class="px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 rounded-lg border border-rose-500/30 transition-all hidden">
+                            <i class="fa-solid fa-broom ml-1"></i> إزالة جميع الصفحات (<span id="files-count-badge">0</span>)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dropzone -->
+                <div id="drop-zone" class="border-2 border-dashed border-slate-700 hover:border-brand-500 rounded-xl p-6 sm:p-8 text-center transition-all cursor-pointer bg-slate-800/40 hover:bg-slate-800/80 group">
+                    <input type="file" id="file-input" multiple accept="image/*,application/pdf" class="hidden">
+                    <div class="flex flex-col items-center justify-center space-y-3">
+                        <div class="w-16 h-16 rounded-2xl bg-slate-800 group-hover:scale-110 group-hover:bg-brand-600/20 group-hover:text-brand-500 transition-all duration-300 flex items-center justify-center text-slate-400 text-2xl border border-slate-700">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-slate-200">
+                                اسحب وأسقط الصور أو ملفات PDF هنا، أو <span class="text-brand-500 underline underline-offset-4">انقر للاختيار</span>
+                            </p>
+                            <p class="text-xs text-slate-500 mt-1">يدعم رفع ملفات متعددة بالتتابع والتراكم تلقائياً</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PDF Processing Status Bar -->
+                <div id="pdf-progress-container" class="hidden mt-4 p-3 bg-slate-800/90 border border-slate-700 rounded-xl">
+                    <div class="flex justify-between text-xs mb-1">
+                        <span id="pdf-progress-title" class="text-slate-300 font-medium">جاري معالجة وتحويل صفحات الـ PDF...</span>
+                        <span id="pdf-progress-percent" class="text-brand-400 font-bold">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+                        <div id="pdf-progress-bar" class="bg-gradient-to-r from-brand-600 to-amber-500 h-2 rounded-full transition-all duration-200" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Thumbnails Preview Grid -->
+                <div id="thumbnails-container" class="mt-6 hidden">
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-images"></i> الصفحات والظرف المحضّرة للمعالجة
+                    </h3>
+                    <div id="thumbnails-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-72 overflow-y-auto p-1">
+                        <!-- Items rendered via JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 2: OCR Extraction Settings & Trigger Button -->
+            <section class="bg-darkcard border border-darkborder rounded-2xl p-4 sm:p-6 shadow-xl">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <!-- Style / Context Selection -->
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-pen-nib text-brand-500"></i> نوع النمط والخط
+                        </label>
+                        <select id="ocr-mode-select" class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl p-2.5 focus:border-brand-500 focus:outline-none">
+                            <option value="ruqah_manuscripts" selected>خط رقعة ومخطوطات يدوية معقدة</option>
+                            <option value="standard_arabic">لغة عربية فصحى مطبوعة / خط واضح</option>
+                            <option value="colloquial_dialect">نصوص عامية وتدوينات محلية</option>
+                        </select>
+                    </div>
+
+                    <!-- Precision Level -->
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-sliders text-amber-500"></i> وضع الدقة والترتيب
+                        </label>
+                        <select id="ocr-precision-select" class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl p-2.5 focus:border-brand-500 focus:outline-none">
+                            <option value="strict">تفريغ حرفي حقيقي (مطابق للأصل)</option>
+                            <option value="corrected">تفريغ مع تصحيح الأخطاء الإملائية الواضحة</option>
+                        </select>
+                    </div>
+
+                    <!-- AI Model Badge -->
+                    <div class="space-y-1.5 flex flex-col justify-end">
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                            <span class="text-slate-400">محرك الرؤية المستعمل:</span>
+                            <span class="text-emerald-400 font-mono font-bold bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded">Gemini Vision AI</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Execution Controls -->
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-slate-800">
+                    <div id="ocr-progress-status" class="text-xs text-slate-400 hidden flex items-center gap-2">
+                        <i class="fa-solid fa-circle-notch fa-spin text-brand-500"></i>
+                        <span id="ocr-progress-text">جاري بدء معالجة الصور...</span>
+                    </div>
+
+                    <button id="start-ocr-btn" class="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-brand-600 to-emerald-500 hover:from-brand-500 hover:to-emerald-400 text-white font-bold rounded-xl shadow-lg shadow-brand-900/30 transition-all transform active:scale-95 flex items-center justify-center gap-3 text-base">
+                        <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+                        <span>بدء التفريغ الذكي</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Section 3: Extraction Workspace (Results View & Editor) -->
+            <section id="results-section" class="bg-darkcard border border-darkborder rounded-2xl p-4 sm:p-6 shadow-xl space-y-4">
+                
+                <!-- Workspace Header & View Toggles -->
+                <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-4 border-b border-darkborder">
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-file-lines text-brand-500"></i>
+                            النص المفرغ والتحرير
+                        </h2>
+                    </div>
+
+                    <!-- Toolbars: Diacritics & Views -->
+                    <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-between lg:justify-end">
+                        
+                        <!-- View Switching Buttons -->
+                        <div class="bg-slate-800 p-1 rounded-xl border border-slate-700 flex text-xs">
+                            <button id="view-continuous-btn" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white font-medium shadow-sm transition-all flex items-center gap-1.5">
+                                <i class="fa-solid fa-align-justify"></i> عرض متصل
+                            </button>
+                            <button id="view-page-btn" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all flex items-center gap-1.5">
+                                <i class="fa-solid fa-columns"></i> صفحة بصفحة
+                            </button>
+                        </div>
+
+                        <!-- Diacritics Engine Dropdown & Trigger -->
+                        <div class="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl border border-slate-700">
+                            <select id="diacritics-level" class="bg-slate-900 text-slate-200 text-xs rounded-lg px-2 py-1.5 border border-slate-700 focus:outline-none">
+                                <option value="full">تشكيل كامل للعبارات</option>
+                                <option value="endings">تشكيل أواخر الكلمات (إعراب)</option>
+                                <option value="strip">تجريد كامل من التشكيل</option>
+                            </select>
+                            <button id="apply-diacritics-btn" class="px-3 py-1.5 bg-amber-600/80 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1">
+                                <i class="fa-solid fa-language"></i> تشكيل
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Continuous View Area -->
+                <div id="continuous-view-container" class="space-y-3">
+                    <div class="relative">
+                        <textarea id="main-text-editor" rows="16" dir="rtl" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 sm:p-5 text-slate-100 font-sans text-base leading-relaxed focus:outline-none focus:border-brand-500 transition-all resize-y shadow-inner" placeholder="سيظهر النص المفرغ هنا فور الانتهاء من المعالجة... يمكنك كتابة وتعديل النص هنا مباشرة."></textarea>
+                    </div>
+                </div>
+
+                <!-- Page by Page View Area (Hidden by default) -->
+                <div id="page-view-container" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <!-- Left Column: Source Image Viewer -->
+                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-3 flex flex-col h-[500px]">
+                        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-xs text-slate-400">
+                            <span>الصورة الأصلية للصفحة: <strong id="page-view-num" class="text-brand-400">1</strong></span>
+                            <div class="flex items-center gap-2">
+                                <button id="prev-page-btn" class="p-1 hover:text-white"><i class="fa-solid fa-chevron-right"></i> السابقة</button>
+                                <button id="next-page-btn" class="p-1 hover:text-white">التالية <i class="fa-solid fa-chevron-left"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex-1 bg-black/40 rounded-lg overflow-hidden flex items-center justify-center relative p-2">
+                            <img id="page-view-img" src="" alt="صفحة المخطوطة" class="max-h-full max-w-full object-contain rounded">
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Transcribed Page Text -->
+                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-3 flex flex-col h-[500px]">
+                        <div class="pb-2 mb-2 border-b border-slate-800 text-xs text-slate-400 flex justify-between items-center">
+                            <span>محتوى هذه الصفحة فقط</span>
+                            <span class="text-xs text-slate-500">محرر مستمر التزامن</span>
+                        </div>
+                        <textarea id="page-text-editor" dir="rtl" class="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-3 text-slate-100 font-sans text-base leading-relaxed focus:outline-none focus:border-brand-500 resize-none"></textarea>
+                    </div>
+                </div>
+
+                <!-- Action Footer: Export & Actions -->
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800">
+                    <div class="flex items-center gap-2 text-xs text-slate-400">
+                        <i class="fa-solid fa-file-word text-blue-400 text-sm"></i>
+                        <span id="word-count-badge">عدد الكلمات: 0</span>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="copy-text-btn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors flex items-center gap-1.5">
+                            <i class="fa-regular fa-copy"></i> نسخ النص
+                        </button>
+                        <button id="export-txt-btn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors flex items-center gap-1.5">
+                            <i class="fa-regular fa-file-lines text-amber-400"></i> تصدير TXT
+                        </button>
+                        <button id="export-doc-btn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-word text-blue-400"></i> تصدير Word (.doc)
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Settings Modal for Gemini API Key -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
+        <div class="bg-darkcard border border-darkborder rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-key text-amber-400"></i> إعداد مفتاح API الخاص بـ Gemini
+                </h3>
+                <button id="close-modal-btn" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-300 leading-relaxed">
+                التطبيق يحتاج إلى مفتاح Gemini API لتفعيل معالجة الصور والمخطوطات. يمكنك إدخال المفتاح هنا وسوف يتم حفظه بأمان في متصفحك.
+            </p>
+
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-400">Google Gemini API Key</label>
+                <input type="password" id="api-key-input" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-brand-500 font-mono">
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button id="save-api-key-btn" class="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs rounded-xl transition-colors">
+                    حفظ المفتاح
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Box -->
+    <div id="toast-msg" class="fixed bottom-6 left-6 z-50 bg-slate-800 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-brand-500 text-lg"></i>
+        <span id="toast-text" class="text-xs font-medium">تم الحفظ بنجاح</span>
+    </div>
+
+    <script>
+        const appState = {
+            pages: [], // Array of { id, name, base64, mimeType, extractedText, sourceFile, pageNum }
+            apiKey: localStorage.getItem('gemini_api_key') || '',
+            activeView: 'continuous', // 'continuous' or 'page'
+            currentPageIndex: 0,
+            autoSaveTimer: null,
+            isProcessing: false
+        };
+
+        // DOM Elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const thumbnailsContainer = document.getElementById('thumbnails-container');
+        const thumbnailsGrid = document.getElementById('thumbnails-grid');
+        const clearAllFilesBtn = document.getElementById('clear-all-files-btn');
+        const filesCountBadge = document.getElementById('files-count-badge');
+        
+        const pdfProgressContainer = document.getElementById('pdf-progress-container');
+        const pdfProgressBar = document.getElementById('pdf-progress-bar');
+        const pdfProgressPercent = document.getElementById('pdf-progress-percent');
+        const pdfProgressTitle = document.getElementById('pdf-progress-title');
+
+        const startOcrBtn = document.getElementById('start-ocr-btn');
+        const ocrProgressStatus = document.getElementById('ocr-progress-status');
+        const ocrProgressText = document.getElementById('ocr-progress-text');
+
+        const mainTextEditor = document.getElementById('main-text-editor');
+        const pageTextEditor = document.getElementById('page-text-editor');
+        const continuousViewContainer = document.getElementById('continuous-view-container');
+        const pageViewContainer = document.getElementById('page-view-container');
+        const viewContinuousBtn = document.getElementById('view-continuous-btn');
+        const viewPageBtn = document.getElementById('view-page-btn');
+
+        const pageViewImg = document.getElementById('page-view-img');
+        const pageViewNum = document.getElementById('page-view-num');
+        const prevPageBtn = document.getElementById('prev-page-btn');
+        const nextPageBtn = document.getElementById('next-page-btn');
+
+        const wordCountBadge = document.getElementById('word-count-badge');
+        const autosaveText = document.getElementById('autosave-text');
+
+        const settingsModal = document.getElementById('settings-modal');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+        const openSettingsBtn = document.getElementById('open-settings-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const historyList = document.getElementById('history-list');
+
+        // Initial setup
+        window.addEventListener('DOMContentLoaded', () => {
+            initEvents();
+            renderHistory();
+            startAutoSaveInterval();
+            if (appState.apiKey) {
+                apiKeyInput.value = appState.apiKey;
+            }
+        });
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast-msg');
+            const toastText = document.getElementById('toast-text');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastText.textContent = message;
+            if (type === 'error') {
+                toastIcon.className = 'fa-solid fa-circle-exclamation text-rose-500 text-lg';
+            } else if (type === 'warning') {
+                toastIcon.className = 'fa-solid fa-triangle-exclamation text-amber-500 text-lg';
+            } else {
+                toastIcon.className = 'fa-solid fa-circle-check text-brand-500 text-lg';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
+        }
+
+        function initEvents() {
+            // Drag and Drop Events with robust prevention
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-active'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-active'), false);
+            });
+
+            dropZone.addEventListener('drop', handleDrop, false);
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    handleFiles(Array.from(e.target.files));
+                    // CRITICAL FIX: Reset file input so selecting the exact same file triggers change event again
+                    fileInput.value = '';
+                }
+            });
+
+            clearAllFilesBtn.addEventListener('click', clearAllFiles);
+
+            // API Modal Events
+            openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+            closeModalBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+            saveApiKeyBtn.addEventListener('click', () => {
+                const val = apiKeyInput.value.trim();
+                appState.apiKey = val;
+                localStorage.setItem('gemini_api_key', val);
+                settingsModal.classList.add('hidden');
+                showToast('تم حفظ مفتاح API بنجاح');
+            });
+
+            // Sidebar Events
+            sidebarToggleBtn.addEventListener('click', toggleSidebar);
+            closeSidebarBtn.addEventListener('click', toggleSidebar);
+            sidebarOverlay.addEventListener('click', toggleSidebar);
+            document.getElementById('clear-history-btn').addEventListener('click', clearHistory);
+
+            // View Switching
+            viewContinuousBtn.addEventListener('click', () => switchView('continuous'));
+            viewPageBtn.addEventListener('click', () => switchView('page'));
+
+            // Page Navigation
+            prevPageBtn.addEventListener('click', () => changePage(appState.currentPageIndex - 1));
+            nextPageBtn.addEventListener('click', () => changePage(appState.currentPageIndex + 1));
+
+            // Main Editor Input Update
+            mainTextEditor.addEventListener('input', () => {
+                updateWordCount();
+                if (appState.activeView === 'page' && appState.pages[appState.currentPageIndex]) {
+                    // Update current page extracted text from page editor
+                }
+            });
+
+            pageTextEditor.addEventListener('input', (e) => {
+                if (appState.pages[appState.currentPageIndex]) {
+                    appState.pages[appState.currentPageIndex].extractedText = e.target.value;
+                    syncPageTextToMainEditor();
+                }
+            });
+
+            // Trigger Buttons
+            startOcrBtn.addEventListener('click', runSmartOCR);
+            document.getElementById('apply-diacritics-btn').addEventListener('click', runDiacriticsEngine);
+
+            // Export Buttons
+            document.getElementById('copy-text-btn').addEventListener('click', copyTextToClipboard);
+            document.getElementById('export-txt-btn').addEventListener('click', exportAsTXT);
+            document.getElementById('export-doc-btn').addEventListener('click', exportAsDoc);
+        }
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('translate-x-full');
+            sidebarOverlay.classList.toggle('hidden');
+        }
+
+        async function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = Array.from(dt.files);
+            if (files.length > 0) {
+                await handleFiles(files);
+            }
+        }
+
+        async function handleFiles(files) {
+            for (const file of files) {
+                if (file.type === 'application/pdf') {
+                    await processPDFFile(file);
+                } else if (file.type.startsWith('image/')) {
+                    await processImageFile(file);
+                } else {
+                    showToast(`الملف "${file.name}" غير مدعوم. يرجى رفع صور أو PDF فقط`, 'warning');
+                }
+            }
+            renderThumbnails();
+        }
+
+        function processImageFile(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    appState.pages.push({
+                        id: 'page_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                        name: file.name,
+                        base64: e.target.result,
+                        mimeType: file.type || 'image/jpeg',
+                        extractedText: '',
+                        sourceFile: file.name,
+                        pageNum: 1
+                    });
+                    resolve();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function processPDFFile(file) {
+            pdfProgressContainer.classList.remove('hidden');
+            pdfProgressTitle.textContent = `جاري تحويل صفحات PDF (${file.name})...`;
+            pdfProgressPercent.textContent = `0%`;
+            pdfProgressBar.style.width = `0%`;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const totalPages = pdf.numPages;
+
+                for (let i = 1; i <= totalPages; i++) {
+                    const page = await pdf.getPage(i);
+                    // High-resolution scale for sharp Arabic OCR
+                    const viewport = page.getViewport({ scale: 2.0 });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+                    await page.render({ canvasContext: context, viewport: viewport }).promise;
+                    const base64Img = canvas.toDataURL('image/jpeg', 0.92);
+
+                    appState.pages.push({
+                        id: 'pdf_page_' + Date.now() + '_' + i,
+                        name: `${file.name} (صفحة ${i})`,
+                        base64: base64Img,
+                        mimeType: 'image/jpeg',
+                        extractedText: '',
+                        sourceFile: file.name,
+                        pageNum: i
+                    });
+
+                    const percent = Math.round((i / totalPages) * 100);
+                    pdfProgressPercent.textContent = `${percent}%`;
+                    pdfProgressBar.style.width = `${percent}%`;
+                }
+                showToast(`تم إضافة ${totalPages} صفحة من ملف الـ PDF بنجاح`);
+            } catch (err) {
+                console.error(err);
+                showToast('حدث خطأ أثناء معالجة ملف الـ PDF', 'error');
+            } finally {
+                setTimeout(() => {
+                    pdfProgressContainer.classList.add('hidden');
+                }, 1000);
+            }
+        }
+
+        function renderThumbnails() {
+            if (appState.pages.length === 0) {
+                thumbnailsContainer.classList.add('hidden');
+                clearAllFilesBtn.classList.add('hidden');
+                return;
+            }
+
+            thumbnailsContainer.classList.remove('hidden');
+            clearAllFilesBtn.classList.remove('hidden');
+            filesCountBadge.textContent = appState.pages.length;
+            thumbnailsGrid.innerHTML = '';
+
+            appState.pages.forEach((page, idx) => {
+                const card = document.createElement('div');
+                card.className = 'relative group bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-sm hover:border-brand-500 transition-all flex flex-col';
+                card.innerHTML = `
+                    <div class="h-28 bg-black/50 overflow-hidden flex items-center justify-center relative">
+                        <img src="${page.base64}" alt="${page.name}" class="object-cover h-full w-full">
+                        <button onclick="removeSinglePage(${idx})" class="absolute top-1 left-1 bg-rose-600/80 hover:bg-rose-600 text-white rounded-md w-6 h-6 flex items-center justify-center text-xs opacity-90 transition-opacity" title="حذف هذه الصفحة">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                        <span class="absolute bottom-1 right-1 bg-slate-900/80 text-slate-300 text-[10px] px-1.5 py-0.5 rounded font-mono">
+                            #${idx + 1}
+                        </span>
+                    </div>
+                    <div class="p-2 text-[11px] text-slate-300 truncate font-medium bg-slate-800/90" title="${page.name}">
+                        ${page.name}
+                    </div>
+                `;
+                thumbnailsGrid.appendChild(card);
+            });
+        }
+
+        function removeSinglePage(index) {
+            appState.pages.splice(index, 1);
+            if (appState.currentPageIndex >= appState.pages.length) {
+                appState.currentPageIndex = Math.max(0, appState.pages.length - 1);
+            }
+            renderThumbnails();
+            syncPageTextToMainEditor();
+        }
+
+        function clearAllFiles() {
+            appState.pages = [];
+            appState.currentPageIndex = 0;
+            renderThumbnails();
+            mainTextEditor.value = '';
+            pageTextEditor.value = '';
+            updateWordCount();
+            showToast('تم مسح جميع الصفحات');
+        }
+
+        async function runSmartOCR() {
+            if (appState.pages.length === 0) {
+                showToast('يرجى إضافة صور أو ملفات PDF أولاً!', 'warning');
+                return;
+            }
+
+            const apiKey = appState.apiKey || '';
+            
+            appState.isProcessing = true;
+            startOcrBtn.disabled = true;
+            startOcrBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            ocrProgressStatus.classList.remove('hidden');
+
+            const mode = document.getElementById('ocr-mode-select').value;
+            const precision = document.getElementById('ocr-precision-select').value;
+
+            let systemPrompt = "أنت خبير فك تشفير وتفريغ المخطوطات والخطوط اليدوية العربية ورسومات خط الرقعة المعقدة.";
+            if (mode === 'ruqah_manuscripts') {
+                systemPrompt += " قم باستخراج النصوص العربية المكتوبة بخط الرقعة أو الخط اليدوي أو المخطوطات القديمة بدقة متناهية وبدون حذف أي كلمة. حافظ على الترتيب الأصلي والأسلوب.";
+            } else if (mode === 'standard_arabic') {
+                systemPrompt += " قم باستخراج النصوص المطبوعة أو المكتوبة بخط واضح بدقة عالية.";
+            } else {
+                systemPrompt += " قم باستخراج النصوص المكتوبة بالعامية أو اللهجات المحلية كما هي مع مراعاة الألفاظ المصاغة.";
+            }
+
+            if (precision === 'strict') {
+                systemPrompt += " قم بإرجاع النص المفرغ فقط بدون أي شرح أو مقدمات أو تعليقات خارجية.";
+            }
+
+            let fullExtractedText = '';
+
+            for (let i = 0; i < appState.pages.length; i++) {
+                const page = appState.pages[i];
+                ocrProgressText.textContent = `جاري معالجة الصفحة ${i + 1} من ${appState.pages.length}...`;
+
+                try {
+                    const extracted = await callGeminiVision(page.base64, page.mimeType, systemPrompt, apiKey);
+                    page.extractedText = extracted;
+                } catch (err) {
+                    console.error(`Error processing page ${i + 1}:`, err);
+                    page.extractedText = `[خطأ أثناء استخراج النص لهذه الصفحة]`;
+                }
+            }
+
+            syncPageTextToMainEditor();
+            updateWordCount();
+            
+            // Save to Local History
+            saveCurrentToHistory();
+
+            ocrProgressStatus.classList.add('hidden');
+            startOcrBtn.disabled = false;
+            startOcrBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            appState.isProcessing = false;
+
+            showToast('اكتمل التفريغ الذكي بنجاح!');
+        }
+
+        async function callGeminiVision(base64DataUrl, mimeType, prompt, apiKey) {
+            const base64Clean = base64DataUrl.split(',')[1];
+            
+            // Use standard model endpoint gemini-3-flash-preview
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [
+                    {
+                        role: 'user',
+                        parts: [
+                            { text: prompt },
+                            {
+                                inlineData: {
+                                    mimeType: mimeType,
+                                    data: base64Clean
+                                }
+                            }
+                        ]
+                    }
+                ]
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errJson = await response.json().catch(() => ({}));
+                throw new Error(errJson.error?.message || 'فشل الاتصال بالذكاء الاصطناعي');
+            }
+
+            const data = await response.json();
+            const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            return textResult.trim();
+        }
+
+        async function runDiacriticsEngine() {
+            const currentText = mainTextEditor.value.trim();
+            if (!currentText) {
+                showToast('لا يوجد نص في المحرر لإعادة التشكيل!', 'warning');
+                return;
+            }
+
+            const level = document.getElementById('diacritics-level').value;
+
+            if (level === 'strip') {
+                // Remove all Arabic diacritics via regex instantly
+                const stripped = currentText.replace(/[\u064B-\u0652]/g, "");
+                mainTextEditor.value = stripped;
+                showToast('تم تجريد النص من التشكيل');
+                return;
+            }
+
+            const apiKey = appState.apiKey || '';
+
+            let prompt = "";
+            if (level === 'full') {
+                prompt = "أعد تشكيل النص العربي التالي تشكيلاً كاملاً محققاً وفق القواعد النحوية والصرفية مع الحفاظ التام على الكلمات ودون إضافة أي حواشي:\n\n" + currentText;
+            } else if (level === 'endings') {
+                prompt = "قم بتشكيل أواخر الكلمات فقط (علامات الإعراب) للنص العربي التالي مع عدم تغيير أي جملة أو إضافة تعليقات:\n\n" + currentText;
+            }
+
+            showToast('جاري ضبط التشكيل النحوي بالذكاء الاصطناعي...', 'warning');
+
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }]
+                };
+
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                if (resultText) {
+                    mainTextEditor.value = resultText.trim();
+                    showToast('تم تطبيق التشكيل بنجاح');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('حدث خطأ أثناء ضبط التشكيل', 'error');
+            }
+        }
+
+        function syncPageTextToMainEditor() {
+            if (appState.pages.length === 0) return;
+
+            let combined = '';
+            appState.pages.forEach((p, idx) => {
+                if (p.extractedText) {
+                    combined += `--- [صفحة ${idx + 1}: ${p.name}] ---\n${p.extractedText}\n\n`;
+                }
+            });
+
+            mainTextEditor.value = combined.trim();
+            updateWordCount();
+
+            if (appState.pages[appState.currentPageIndex]) {
+                pageTextEditor.value = appState.pages[appState.currentPageIndex].extractedText || '';
+            }
+        }
+
+        function switchView(view) {
+            appState.activeView = view;
+            if (view === 'continuous') {
+                continuousViewContainer.classList.remove('hidden');
+                pageViewContainer.classList.add('hidden');
+                viewContinuousBtn.className = "px-3 py-1.5 rounded-lg bg-brand-600 text-white font-medium shadow-sm transition-all flex items-center gap-1.5";
+                viewPageBtn.className = "px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all flex items-center gap-1.5";
+            } else {
+                if (appState.pages.length === 0) {
+                    showToast('يرجى رفع صور أولاً لعرض وضع صفحة بصفحة', 'warning');
+                    return;
+                }
+                continuousViewContainer.classList.add('hidden');
+                pageViewContainer.classList.remove('hidden');
+                viewContinuousBtn.className = "px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all flex items-center gap-1.5";
+                viewPageBtn.className = "px-3 py-1.5 rounded-lg bg-brand-600 text-white font-medium shadow-sm transition-all flex items-center gap-1.5";
+                
+                changePage(appState.currentPageIndex);
+            }
+        }
+
+        function changePage(index) {
+            if (index < 0 || index >= appState.pages.length) return;
+            appState.currentPageIndex = index;
+            const page = appState.pages[index];
+
+            pageViewImg.src = page.base64;
+            pageViewNum.textContent = `${index + 1} من ${appState.pages.length}`;
+            pageTextEditor.value = page.extractedText || '';
+        }
+
+        function updateWordCount() {
+            const text = mainTextEditor.value.trim();
+            const count = text ? text.split(/\s+/).length : 0;
+            wordCountBadge.textContent = `عدد الكلمات: ${count}`;
+        }
+
+        function startAutoSaveInterval() {
+            setInterval(() => {
+                if (mainTextEditor.value.trim()) {
+                    localStorage.setItem('arabic_ocr_draft', mainTextEditor.value);
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+                    autosaveText.textContent = `تم الحفظ تلقائياً (${timeStr})`;
+                }
+            }, 10000);
+        }
+
+        function saveCurrentToHistory() {
+            const history = JSON.parse(localStorage.getItem('arabic_ocr_history') || '[]');
+            const newItem = {
+                id: Date.now(),
+                date: new Date().toLocaleString('ar-EG'),
+                pagesCount: appState.pages.length,
+                textSnippet: mainTextEditor.value.slice(0, 100) + '...',
+                fullText: mainTextEditor.value
+            };
+            history.unshift(newItem);
+            localStorage.setItem('arabic_ocr_history', JSON.stringify(history.slice(0, 20))); // keep last 20
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const history = JSON.parse(localStorage.getItem('arabic_ocr_history') || '[]');
+            if (history.length === 0) {
+                historyList.innerHTML = `
+                    <div class="text-center py-8 text-slate-500 text-xs">
+                        <i class="fa-solid fa-box-open text-2xl mb-2 block opacity-40"></i>
+                        لا يوجد عمليات محفوظة بعد
+                    </div>`;
+                return;
+            }
+
+            historyList.innerHTML = '';
+            history.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'p-3 bg-slate-800/80 border border-slate-700/80 rounded-xl hover:border-brand-500 cursor-pointer transition-all text-xs space-y-1.5';
+                el.innerHTML = `
+                    <div class="flex justify-between items-center text-slate-400 text-[10px]">
+                        <span>${item.date}</span>
+                        <span class="bg-brand-950 text-brand-400 px-1.5 py-0.5 rounded border border-brand-800">${item.pagesCount} صفحات</span>
+                    </div>
+                    <p class="text-slate-200 line-clamp-2 leading-relaxed font-sans">${item.textSnippet}</p>
+                `;
+                el.addEventListener('click', () => {
+                    mainTextEditor.value = item.fullText;
+                    updateWordCount();
+                    showToast('تم تحميل النص من السجل');
+                    toggleSidebar();
+                });
+                historyList.appendChild(el);
+            });
+        }
+
+        function clearHistory() {
+            localStorage.removeItem('arabic_ocr_history');
+            renderHistory();
+            showToast('تم مسح السجل');
+        }
+
+        function copyTextToClipboard() {
+            const text = mainTextEditor.value;
+            if (!text) return;
+            
+            // Safe copy fallback
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            showToast('تم نسخ النص إلى الحافظة');
+        }
+
+        function exportAsTXT() {
+            const text = mainTextEditor.value;
+            if (!text) return;
+
+            // UTF-8 with BOM (\uFEFF) to ensure correct Arabic display in Notepad
+            const blob = new Blob(["\uFEFF" + text], { type: "text/plain;charset=utf-8" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `تفريغ_نصي_${Date.now()}.txt`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        function exportAsDoc() {
+            const text = mainTextEditor.value;
+            if (!text) return;
+
+            const htmlContent = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head>
+                    <meta charset='utf-8'>
+                    <title>مستند مفرغ</title>
+                    <style>
+                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; direction: rtl; text-align: right; }
+                        p { font-size: 14pt; line-height: 1.6; }
+                    </style>
+                </head>
+                <body>
+                    ${text.replace(/\n/g, '<br>')}
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob([htmlContent], { type: 'application/msword;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `مستند_مفرغ_${Date.now()}.doc`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+    </script>
+</body>
+</html>
